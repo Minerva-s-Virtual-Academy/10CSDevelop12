@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CPU Performance &amp; Cache Lab</title>
+<style>
+  :root {
+    --primary: #007BA6;
+    --primary-light: #f4fafd;
+    --teal: #00796B;
+    --teal-light: #e0f2f1;
+    --amber: #ef6c00;
+    --amber-light: #fff3e0;
+    --red: #c62828;
+    --red-light: #ffebee;
+    --bg: #ffffff;
+    --text: #333333;
+  }
+
+  * {
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    padding: 15px;
+    background-color: #f7f9fa;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  .app-container {
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--bg);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  }
+
+  /* Header & Mode Tabs */
+  .top-bar {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 3px solid var(--primary);
+    padding-bottom: 12px;
+    margin-bottom: 18px;
+    gap: 10px;
+  }
+
+  .top-bar h1 {
+    font-size: 1.3em;
+    color: var(--primary);
+    margin: 0;
+  }
+
+  .mode-tabs {
+    display: flex;
+    gap: 8px;
+  }
+
+  .tab-btn {
+    padding: 8px 14px;
+    border: 2px solid var(--primary);
+    background: #fff;
+    color: var(--primary);
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s;
+  }
+
+  .tab-btn.active {
+    background: var(--primary);
+    color: #fff;
+  }
+
+  /* Lab Controls Grid */
+  .lab-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.15fr;
+    gap: 18px;
+    margin-bottom: 18px;
+  }
+
+  @media (max-width: 740px) {
+    .lab-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .controls-panel {
+    background: var(--primary-light);
+    border: 2px solid var(--primary);
+    border-radius: 10px;
+    padding: 15px;
+  }
+
+  .control-group {
+    background: #fff;
+    border: 1px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 12px;
+  }
+
+  .control-group:last-child {
+    margin-bottom: 0;
+  }
+
+  .control-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 0.92em;
+    margin-bottom: 6px;
+  }
+
+  .val-badge {
+    background: var(--teal);
+    color: #fff;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: 0.88em;
+  }
+
+  input[type="range"] {
+    width: 100%;
+    cursor: pointer;
+    accent-color: var(--primary);
+  }
+
+  .workload-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .wl-btn {
+    padding: 7px 8px;
+    border: 2px solid #90a4ae;
+    background: #fff;
+    border-radius: 6px;
+    font-weight: bold;
+    font-size: 0.82em;
+    cursor: pointer;
+    color: #444;
+    text-align: center;
+  }
+
+  .wl-btn.active {
+    border-color: var(--teal);
+    background: var(--teal-light);
+    color: var(--teal);
+  }
+
+  /* Visual Output Panel */
+  .visual-panel {
+    background: #fdfbf7;
+    border: 2px solid var(--teal);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .cores-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 10px 0;
+  }
+
+  .core-box {
+    border: 2px solid #cfd8dc;
+    background: #eceff1;
+    border-radius: 6px;
+    padding: 8px 4px;
+    text-align: center;
+    font-size: 0.8em;
+    transition: all 0.25s;
+  }
+
+  .core-box.active-core {
+    border-color: var(--primary);
+    background: #e3f2fd;
+    color: var(--primary);
+    font-weight: bold;
+  }
+
+  .core-box.idle-core {
+    border-color: #ef9a9a;
+    background: #ffebee;
+    color: #b71c1c;
+  }
+
+  /* Cache & RAM Bar */
+  .cache-visual {
+    background: #fff;
+    border: 1.5px solid #cfd8dc;
+    border-radius: 8px;
+    padding: 10px;
+    margin: 10px 0;
+  }
+
+  .bar-track {
+    width: 100%;
+    height: 18px;
+    background: #ffebee;
+    border-radius: 9px;
+    overflow: hidden;
+    display: flex;
+    margin: 6px 0;
+    border: 1px solid #ccc;
+  }
+
+  .bar-hit {
+    background: var(--teal);
+    height: 100%;
+    transition: width 0.3s;
+  }
+
+  .metrics-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .metric-card {
+    background: #fff;
+    border: 1.5px solid #d0e3eb;
+    border-radius: 6px;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .metric-num {
+    font-size: 1.15em;
+    font-weight: bold;
+    color: var(--primary);
+  }
+
+  .metric-label {
+    font-size: 0.75em;
+    color: #555;
+  }
+
+  .insight-box {
+    background: var(--amber-light);
+    border-left: 5px solid var(--amber);
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.9em;
+    color: #333;
+  }
+
+  /* Scenario Mode Styles */
+  .scenario-panel {
+    display: none;
+  }
+
+  .scenario-card {
+    background: var(--primary-light);
+    border-left: 5px solid var(--primary);
+    padding: 14px 18px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+  }
+
+  .scenario-badge {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    font-weight: bold;
+    font-size: 0.82em;
+    padding: 2px 10px;
+    border-radius: 4px;
+    margin-bottom: 6px;
+  }
+
+  .cpu-choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .cpu-option {
+    background: #fff;
+    border: 2px solid #b0bec5;
+    border-radius: 8px;
+    padding: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+
+  .cpu-option:hover:not(.locked) {
+    border-color: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+  }
+
+  .cpu-option.correct-opt {
+    border-color: #2e7d32;
+    background: #e8f5e9;
+  }
+
+  .cpu-option.wrong-opt {
+    border-color: var(--red);
+    background: var(--red-light);
+  }
+
+  .cpu-spec-title {
+    font-weight: bold;
+    color: var(--primary);
+    font-size: 1.02em;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 4px;
+  }
+
+  .spec-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.88em;
+  }
+
+  .spec-list li {
+    margin-bottom: 4px;
+  }
+
+  .feedback-banner {
+    display: none;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+    font-size: 0.94em;
+  }
+
+  .feedback-banner.success {
+    display: block;
+    background: #e8f5e9;
+    border-left: 5px solid #2e7d32;
+    color: #1b5e20;
+  }
+
+  .feedback-banner.error {
+    display: block;
+    background: var(--red-light);
+    border-left: 5px solid var(--red);
+    color: #b71c1c;
+  }
+
+  .btn {
+    padding: 9px 18px;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 0.92em;
+  }
+
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-primary:hover { background: #005f80; }
+  .btn-teal { background: var(--teal); color: #fff; }
+</style>
+</head>
+<body>
+
+<div class="app-container">
+  <!-- HEADER -->
+  <div class="top-bar">
+    <h1>CPU Performance &amp; Cache Explorer</h1>
+    <div class="mode-tabs">
+      <button id="tab-lab" class="tab-btn active" onclick="switchTab('lab')">1. Live CPU Lab</button>
+      <button id="tab-scen" class="tab-btn" onclick="switchTab('scen')">2. Client Scenarios</button>
+    </div>
+  </div>
+
+  <!-- MODE 1: LIVE CPU BOTTLENECK LAB -->
+  <div id="lab-panel">
+    <p style="margin-top: 0; font-size: 0.94em; color: #444;">
+      Adjust the hardware sliders below and switch between a <strong>Sequential</strong> task and a <strong>Parallel</strong> task to see how Clock Speed, Cores, and Cache interact in real time.
+    </p>
+
+    <div class="lab-grid">
+      <!-- LEFT: SLIDERS -->
+      <div class="controls-panel">
+        <div class="control-group">
+          <div class="control-header">
+            <span>⏱ Clock Speed</span>
+            <span id="lbl-clock" class="val-badge">3.0 GHz</span>
+          </div>
+          <input type="range" id="sl-clock" min="1.5" max="5.0" step="0.5" value="3.0" oninput="updateLab()">
+          <div style="font-size: 0.76em; color: #666;">Cycles per second (1.5 GHz – 5.0 GHz)</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <span>🔲 Processor Cores</span>
+            <span id="lbl-cores" class="val-badge">2 Cores (Dual)</span>
+          </div>
+          <input type="range" id="sl-cores" min="1" max="8" step="1" value="2" oninput="updateLab()">
+          <div style="font-size: 0.76em; color: #666;">Independent processing units (1 – 8 cores)</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <span>⚡ Total Cache Size (L1–L3)</span>
+            <span id="lbl-cache" class="val-badge">4 MB</span>
+          </div>
+          <input type="range" id="sl-cache" min="1" max="32" step="1" value="4" oninput="updateLab()">
+          <div style="font-size: 0.76em; color: #666;">Ultra-fast on-chip SRAM (1 MB – 32 MB)</div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <span>📂 Workload Type</span>
+          </div>
+          <div class="workload-btns">
+            <button id="wl-parallel" class="wl-btn active" onclick="setWorkload('parallel')">Parallel Task<br><span style="font-weight:normal; font-size:0.88em;">(e.g. 4K Video Render)</span></button>
+            <button id="wl-seq" class="wl-btn" onclick="setWorkload('seq')">Sequential Task<br><span style="font-weight:normal; font-size:0.88em;">(e.g. Older Single-Core App)</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: VISUALIZER -->
+      <div class="visual-panel">
+        <div>
+          <div style="font-weight: bold; color: var(--teal); font-size: 0.95em;">CPU Core Utilisation (8 Physical Slots)</div>
+          <div id="cores-grid" class="cores-grid"></div>
+
+          <div class="cache-visual">
+            <div style="display: flex; justify-content: space-between; font-size: 0.82em; font-weight: bold;">
+              <span style="color: var(--teal);">✓ Cache Hits: <span id="txt-hit">72%</span></span>
+              <span style="color: var(--red);">✗ RAM Trips (Misses): <span id="txt-miss">28%</span></span>
+            </div>
+            <div class="bar-track">
+              <div id="bar-hit" class="bar-hit" style="width: 72%;"></div>
+            </div>
+            <div style="font-size: 0.76em; color: #555;">
+              Larger cache stores more frequently used instructions, preventing slow fetches from Main Memory (RAM).
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="metrics-row">
+            <div class="metric-card">
+              <div id="met-fps" class="metric-num">142</div>
+              <div class="metric-label">Tasks / Sec</div>
+            </div>
+            <div class="metric-card">
+              <div id="met-heat" class="metric-num" style="color: var(--teal);">65°C</div>
+              <div class="metric-label">Thermal Temp</div>
+            </div>
+            <div class="metric-card">
+              <div id="met-wait" class="metric-num" style="color: var(--amber);">Medium</div>
+              <div class="metric-label">RAM Wait Time</div>
+            </div>
+          </div>
+
+          <div id="lab-insight" class="insight-box" style="margin-top: 10px;">
+            <strong>Live Analysis:</strong> Balanced dual-core setup. Try increasing cores on a Parallel task vs. a Sequential task!
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODE 2: CLIENT ARCHITECT SCENARIOS -->
+  <div id="scen-panel" class="scenario-panel">
+    <div class="scenario-card">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span id="scen-badge" class="scenario-badge">Scenario 1 of 4</span>
+        <span id="scen-score" style="font-weight: bold; color: var(--teal); font-size: 0.9em;">Score: 0 / 4</span>
+      </div>
+      <h3 id="scen-title" style="margin: 4px 0 6px 0; color: var(--primary);">Scenario Title</h3>
+      <p id="scen-desc" style="margin: 0; font-size: 0.95em;">Scenario description goes here.</p>
+    </div>
+
+    <div id="cpu-choices" class="cpu-choices"></div>
+
+    <div id="scen-feedback" class="feedback-banner"></div>
+
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <button class="btn btn-teal" onclick="switchTab('lab')">&larr; Back to Live Lab</button>
+      <button id="btn-next-scen" class="btn btn-primary" style="display: none;" onclick="nextScenario()">Next Scenario &rarr;</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let workload = 'parallel';
+
+  function switchTab(tab) {
+    document.getElementById("tab-lab").classList.toggle("active", tab === "lab");
+    document.getElementById("tab-scen").classList.toggle("active", tab === "scen");
+
+    document.getElementById("lab-panel").style.display = tab === "lab" ? "block" : "none";
+    document.getElementById("scen-panel").style.display = tab === "scen" ? "block" : "none";
+
+    if (tab === "scen") {
+      renderScenario();
+    }
+  }
+
+  function setWorkload(type) {
+    workload = type;
+    document.getElementById("wl-parallel").classList.toggle("active", type === "parallel");
+    document.getElementById("wl-seq").classList.toggle("active", type === "seq");
+    updateLab();
+  }
+
+  function updateLab() {
+    const clock = parseFloat(document.getElementById("sl-clock").value);
+    const cores = parseInt(document.getElementById("sl-cores").value);
+    const cache = parseInt(document.getElementById("sl-cache").value);
+
+    // Update labels
+    document.getElementById("lbl-clock").textContent = clock.toFixed(1) + " GHz";
+    const coreNames = {1:"1 Core (Single)", 2:"2 Cores (Dual)", 4:"4 Cores (Quad)", 6:"6 Cores (Hexa)", 8:"8 Cores (Octa)"};
+    document.getElementById("lbl-cores").textContent = coreNames[cores] || (cores + " Cores");
+    document.getElementById("lbl-cache").textContent = cache + " MB";
+
+    // Render 8-core visual grid
+    const grid = document.getElementById("cores-grid");
+    grid.innerHTML = "";
+    for (let i = 1; i <= 8; i++) {
+      const box = document.createElement("div");
+      if (i > cores) {
+        box.className = "core-box";
+        box.innerHTML = `Core ${i}<br><span style="font-size:0.85em; color:#888;">Not fitted</span>`;
+      } else if (workload === "seq" && i > 1) {
+        box.className = "core-box idle-core";
+        box.innerHTML = `Core ${i}<br><span style="font-size:0.85em;">Idle (Waiting)</span>`;
+      } else {
+        box.className = "core-box active-core";
+        box.innerHTML = `Core ${i}<br><span style="font-size:0.85em;">Active (${clock.toFixed(1)}GHz)</span>`;
+      }
+      grid.appendChild(box);
+    }
+
+    // Calculate Cache Hit Rate (logarithmic curve from ~55% at 1MB to ~96% at 32MB)
+    const hitRate = Math.min(97, Math.round(55 + Math.log2(cache) * 8.2));
+    const missRate = 100 - hitRate;
+
+    document.getElementById("txt-hit").textContent = hitRate + "%";
+    document.getElementById("txt-miss").textContent = missRate + "%";
+    document.getElementById("bar-hit").style.width = hitRate + "%";
+
+    // Calculate Effective Throughput (Tasks/Sec)
+    // Parallel efficiency drops slightly at high core counts due to inter-core coordination overhead
+    const effectiveCores = workload === "parallel"
+      ? (1 + (cores - 1) * 0.82)
+      : (1 + (cores - 1) * 0.05); // OS background tasks only
+
+    const cacheEfficiency = 0.55 + (hitRate / 100) * 0.45;
+    const throughput = Math.round(clock * 28 * effectiveCores * cacheEfficiency);
+
+    // Thermal Calculation
+    const temp = Math.round(38 + (clock * 8.5) + (cores * 2.2));
+    const tempEl = document.getElementById("met-heat");
+    tempEl.textContent = temp + "°C";
+    tempEl.style.color = temp > 88 ? "var(--red)" : temp > 74 ? "var(--amber)" : "var(--teal)";
+
+    // RAM Wait Time
+    const waitEl = document.getElementById("met-wait");
+    if (cache >= 16) {
+      waitEl.textContent = "Very Low";
+      waitEl.style.color = "var(--teal)";
+    } else if (cache >= 6) {
+      waitEl.textContent = "Low";
+      waitEl.style.color = "var(--primary)";
+    } else {
+      waitEl.textContent = "High";
+      waitEl.style.color = "var(--red)";
+    }
+
+    document.getElementById("met-fps").textContent = throughput;
+
+    // Dynamic Educational Insight
+    const insight = document.getElementById("lab-insight");
+    if (workload === "seq" && cores >= 4) {
+      insight.innerHTML = `<strong>⚠️ Diminishing Returns (Sequential Bottleneck):</strong> You have <strong>${cores} cores</strong>, but ${cores - 1} of them are sitting idle! Because sequential instructions depend on the previous step, adding cores barely helps—increasing <strong>Clock Speed</strong> or <strong>Cache</strong> is far more effective here.`;
+    } else if (temp > 88) {
+      insight.innerHTML = `<strong>🔥 Thermal Warning (${temp}°C):</strong> Pushing clock speed to <strong>${clock.toFixed(1)} GHz</strong> across ${cores} cores generates extreme heat. In real CPUs, this triggers <em>thermal throttling</em> (slowing the clock down to prevent damage).`;
+    } else if (cache <= 2 && clock >= 4.0) {
+      insight.innerHTML = `<strong>🚦 Cache Starvation:</strong> Your clock speed is fast (<strong>${clock.toFixed(1)} GHz</strong>), but a tiny <strong>${cache} MB cache</strong> causes frequent cache misses (${missRate}%). The fast CPU wastes clock cycles waiting for slow RAM!`;
+    } else if (workload === "parallel" && cores >= 6 && cache >= 12) {
+      insight.innerHTML = `<strong>🚀 High Parallel Efficiency:</strong> All <strong>${cores} cores</strong> are processing instructions simultaneously, fed smoothly by a large <strong>${cache} MB cache</strong> (${hitRate}% hit rate). Notice how 8 cores isn't quite 8× faster than 1 core due to coordination overhead.`;
+    } else {
+      insight.innerHTML = `<strong>📊 Balanced Configuration:</strong> At <strong>${clock.toFixed(1)} GHz</strong> with <strong>${cores} core(s)</strong> and <strong>${cache} MB cache</strong>, the CPU achieves a <strong>${hitRate}% cache hit rate</strong>.`;
+    }
+  }
+
+  // Scenarios Data
+  const scenarios = [
+    {
+      title: "Client 1: 4K Video Editing & 3D Rendering Studio",
+      desc: "An animation studio renders thousands of independent video frames simultaneously. Rendering software is designed to split frames across multiple threads. Which processor should they buy?",
+      options: [
+        {
+          name: "Processor A (High Clock)",
+          specs: ["2 Cores (Dual-Core)", "4.8 GHz Clock Speed", "4 MB L3 Cache"],
+          correct: false,
+          feedback: "Not ideal. Although 4.8 GHz is very fast, having only 2 cores severely limits parallel processing when rendering thousands of independent frames."
+        },
+        {
+          name: "Processor B (Multi-Core + Large Cache)",
+          specs: ["8 Cores (Octa-Core)", "3.6 GHz Clock Speed", "32 MB L3 Cache"],
+          correct: true,
+          feedback: "Spot on! Video rendering is highly parallel—8 cores process 8 frames simultaneously, and the large 32 MB L3 cache keeps texture/frame data close to the cores without waiting on RAM."
+        },
+        {
+          name: "Processor C (Budget Entry)",
+          specs: ["4 Cores (Quad-Core)", "2.2 GHz Clock Speed", "2 MB L3 Cache"],
+          correct: false,
+          feedback: "Too slow. Both the low clock speed (2.2 GHz) and tiny 2 MB cache will create major bottlenecks during heavy video rendering."
+        }
+      ]
+    },
+    {
+      title: "Client 2: Classic Retro Simulation Game",
+      desc: "A gamer wants to run an older simulation game programmed 15 years ago. The game engine was written as a single sequential loop and cannot split its physics calculations across multiple cores. Which CPU will give the highest frame rate?",
+      options: [
+        {
+          name: "Processor X (Workstation)",
+          specs: ["8 Cores (Octa-Core)", "2.6 GHz Clock Speed", "16 MB L3 Cache"],
+          correct: false,
+          feedback: "Because the older game is strictly sequential, 7 of those 8 cores will sit idle! Its lower 2.6 GHz clock speed means each sequential step runs slower."
+        },
+        {
+          name: "Processor Y (Fast Single-Thread)",
+          specs: ["4 Cores (Quad-Core)", "4.9 GHz Clock Speed", "16 MB L3 Cache"],
+          correct: true,
+          feedback: "Correct! For sequential software that relies on a single core, a high clock speed (4.9 GHz) executes each FDE cycle faster, while a healthy 16 MB cache minimises RAM delays."
+        },
+        {
+          name: "Processor Z (Ultra-Low Power)",
+          specs: ["6 Cores (Hexa-Core)", "2.0 GHz Clock Speed", "4 MB L3 Cache"],
+          correct: false,
+          feedback: "6 cores won't help a single-threaded game, and a 2.0 GHz clock speed will feel sluggish."
+        }
+      ]
+    },
+    {
+      title: "Client 3: Understanding Cache Levels (L1 vs L3)",
+      desc: "A junior technician claims: 'We should remove Level 1 cache completely and just make Level 3 cache 1 MB bigger, because L3 is cheaper and holds more data.' Why is this a bad idea?",
+      options: [
+        {
+          name: "Explanation 1",
+          specs: ["L1 is built inside each core", "Runs at full CPU speed", "Removes L1 = huge latency penalty"],
+          correct: true,
+          feedback: "Exactly! L1 cache is physically embedded inside each core and operates at the CPU's full clock speed. L3 cache is shared outside the cores and is significantly slower to access."
+        },
+        {
+          name: "Explanation 2",
+          specs: ["L3 cache is non-volatile storage", "It keeps files when powered off", "L1 cache is only for graphics"],
+          correct: false,
+          feedback: "Careful! All CPU cache (L1, L2, and L3) is volatile SRAM—it loses its contents when power is turned off."
+        },
+        {
+          name: "Explanation 3",
+          specs: ["L1 cache replaces Main Memory", "Computers don't need RAM with L1", "L3 cache is inside the ALU"],
+          correct: false,
+          feedback: "Incorrect. L1 cache is tiny (a few kilobytes) and cannot replace gigabytes of Main Memory (RAM)."
+        }
+      ]
+    },
+    {
+      title: "Client 4: Evaluating a Marketing Claim",
+      desc: "An advert claims: 'Upgrade from our 2.5 GHz Dual-Core CPU to our 2.5 GHz Quad-Core CPU and every single program on your computer will run exactly twice as fast!' What is the best exam-standard evaluation of this claim?",
+      options: [
+        {
+          name: "Evaluation A",
+          specs: ["True — 4 cores is double 2 cores", "Twice the cores always equals", "200% speed in all software"],
+          correct: false,
+          feedback: "Careful—this is the classic exam trap! Doubling cores rarely doubles real-world performance."
+        },
+        {
+          name: "Evaluation B",
+          specs: ["False — sequential tasks can't split", "Cores need time to coordinate", "Gains depend on software design"],
+          correct: true,
+          feedback: "🏆 Full Marks! Performance will improve for multi-tasking and parallel software, but sequential tasks cannot be split across cores, and cores must spend cycles communicating with each other."
+        },
+        {
+          name: "Evaluation C",
+          specs: ["False — clock speed stays at 2.5 GHz", "Extra cores only store extra files", "They do not execute instructions"],
+          correct: false,
+          feedback: "Not quite—each core has its own CU, ALU, and registers, so extra cores DO execute instructions simultaneously, just not always twice as fast."
+        }
+      ]
+    }
+  ];
+
+  let scenIndex = 0;
+  let scenScore = 0;
+  let scenAnswered = false;
+
+  function renderScenario() {
+    const sc = scenarios[scenIndex];
+    scenAnswered = false;
+
+    document.getElementById("scen-badge").textContent = `Scenario ${scenIndex + 1} of ${scenarios.length}`;
+    document.getElementById("scen-score").textContent = `Score: ${scenScore} / ${scenarios.length}`;
+    document.getElementById("scen-title").textContent = sc.title;
+    document.getElementById("scen-desc").textContent = sc.desc;
+
+    const container = document.getElementById("cpu-choices");
+    container.innerHTML = "";
+
+    sc.options.forEach(opt => {
+      const card = document.createElement("div");
+      card.className = "cpu-option";
+      card.innerHTML = `
+        <div class="cpu-spec-title">${opt.name}</div>
+        <ul class="spec-list">
+          ${opt.specs.map(s => `<li>• ${s}</li>`).join("")}
+        </ul>
+      `;
+      card.onclick = () => selectScenarioOption(card, opt);
+      container.appendChild(card);
+    });
+
+    document.getElementById("scen-feedback").style.display = "none";
+    document.getElementById("btn-next-scen").style.display = "none";
+  }
+
+  function selectScenarioOption(cardEl, opt) {
+    if (scenAnswered) return;
+    scenAnswered = true;
+
+    document.querySelectorAll(".cpu-option").forEach(c => c.classList.add("locked"));
+    const fb = document.getElementById("scen-feedback");
+
+    if (opt.correct) {
+      cardEl.classList.add("correct-opt");
+      scenScore++;
+      document.getElementById("scen-score").textContent = `Score: ${scenScore} / ${scenarios.length}`;
+      fb.className = "feedback-banner success";
+      fb.innerHTML = "<strong>✓ Excellent Choice!</strong> " + opt.feedback;
+    } else {
+      cardEl.classList.add("wrong-opt");
+      fb.className = "feedback-banner error";
+      fb.innerHTML = "<strong>✗ Not the best fit:</strong> " + opt.feedback;
+    }
+    fb.style.display = "block";
+
+    const nextBtn = document.getElementById("btn-next-scen");
+    nextBtn.style.display = "inline-block";
+    nextBtn.textContent = scenIndex < scenarios.length - 1 ? "Next Scenario →" : "Restart Scenarios ↺";
+  }
+
+  function nextScenario() {
+    if (scenIndex < scenarios.length - 1) {
+      scenIndex++;
+    } else {
+      scenIndex = 0;
+      scenScore = 0;
+    }
+    renderScenario();
+  }
+
+  // Initialise Lab
+  updateLab();
+</script>
+
+</body>
+</html>
